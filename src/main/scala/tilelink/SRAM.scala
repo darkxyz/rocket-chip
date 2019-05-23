@@ -6,8 +6,8 @@ import Chisel._
 import chisel3.experimental.chiselName
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.diplomaticobjectmodel.logicaltree.LogicalTreeNode
-import freechips.rocketchip.diplomaticobjectmodel.model.AHB_Lite
+import freechips.rocketchip.diplomaticobjectmodel.logicaltree.{BusMemoryLogicalTreeNode, LogicalModuleTree, LogicalTreeNode}
+import freechips.rocketchip.diplomaticobjectmodel.model.{AHB_Lite, TL_C, TL_UL}
 import freechips.rocketchip.util._
 
 class TLRAMErrors(val params: ECCParams, val addrBits: Int) extends Bundle with CanHaveErrors {
@@ -56,14 +56,22 @@ class TLRAM(
     val width = code.width(eccBytes*8)
     val lanes = beatBytes/eccBytes
     val addrBits = (mask zip edge.addr_hi(in.a.bits).asBools).filter(_._1).map(_._2)
-    val (mem, omMem) = makeSinglePortedByteWriteSeqMem(
+    val (mem, omSRAM, omMem) = makeSinglePortedByteWriteSeqMem(
       size = 1 << addrBits.size,
       lanes = lanes,
-      bits = width,
-      busProtocol = Some(new AHB_Lite(None)),
-      dataECC = None, //OMECC.identity,
-      hasAtomics = None
-    )
+      bits = width)
+
+    parentLogicalTreeNode.map {
+      case parentLTN =>
+        def sramLogicalTreeNode = new BusMemoryLogicalTreeNode(
+          device = device,
+          omSRAMs = Seq(omSRAM),
+          busProtocol = new TL_C(None),
+          dataECC = None,
+          hasAtomics = None,
+          busProtocolSpecification = None)
+        LogicalModuleTree.add(parentLTN, sramLogicalTreeNode)
+    }
 
     /* This block uses a two-stage pipeline; A=>D
      * Both stages vie for access to the single SRAM port.

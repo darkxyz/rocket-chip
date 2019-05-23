@@ -5,7 +5,7 @@ package freechips.rocketchip.amba.ahb
 import Chisel._
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.diplomaticobjectmodel.logicaltree.LogicalTreeNode
+import freechips.rocketchip.diplomaticobjectmodel.logicaltree.{BusMemoryLogicalTreeNode, LogicalModuleTree, LogicalTreeNode}
 import freechips.rocketchip.diplomaticobjectmodel.model.AHB_Lite
 import freechips.rocketchip.util._
 import freechips.rocketchip.tilelink.LFSRNoiseMaker
@@ -33,12 +33,20 @@ class AHBRAM(
 
   lazy val module = new LazyModuleImp(this) {
     val (in, _) = node.in(0)
-    val (mem, omMem) = makeSinglePortedByteWriteSeqMem(
-      size = 1 << mask.filter(b=>b).size,
-      busProtocol = Some(new AHB_Lite(None)),
-      dataECC = None, //OMECC.identity,
-      hasAtomics = None
-    )
+    val (mem, omSRAM, omMem) = makeSinglePortedByteWriteSeqMem(size = 1 << mask.filter(b=>b).size)
+
+    parentLogicalTreeNode.map {
+      case parentLTN =>
+        def sramLogicalTreeNode = new BusMemoryLogicalTreeNode(
+          device = device,
+          omSRAMs = Seq(omSRAM),
+          busProtocol = new AHB_Lite(None),
+          dataECC = None,
+          hasAtomics = None,
+          busProtocolSpecification = None)
+        LogicalModuleTree.add(parentLTN, sramLogicalTreeNode)
+    }
+
     // The mask and address during the address phase
     val a_access    = in.htrans === AHBParameters.TRANS_NONSEQ || in.htrans === AHBParameters.TRANS_SEQ
     val a_request   = in.hready && in.hsel && a_access
