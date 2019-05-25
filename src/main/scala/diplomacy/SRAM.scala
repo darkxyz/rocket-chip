@@ -38,25 +38,15 @@ abstract class DiplomaticSRAM(
     bits: Int = 8) = {
     // We require the address range to include an entire beat (for the write mask)
 
-    val uid = DescribedSRAMIdAssigner.genId()
-
-    val mem =  DescribedSRAM(
+    val (mem, omSRAM) =  DescribedSRAM(
       name = devName.getOrElse("mem"),
       desc = devName.getOrElse("mem"),
       size = size,
-      data = Vec(lanes, UInt(width = bits)),
-      uid = uid
+      data = Vec(lanes, UInt(width = bits))
     )
     devName.foreach(n => mem.suggestName(n.split("-").last))
 
     val id = DescribedSRAMIdAssigner.genId()
-
-    val omSRAM: OMSRAM = DiplomaticObjectModelAddressing.makeOMSRAM(
-      desc = "mem", //lim._2.name.map(n => n).getOrElse(lim._1.name),
-      depth = size,
-      data = Vec(lanes, UInt(width = bits)),
-      uid = uid
-    )
 
     val omMem: OMMemory = DiplomaticObjectModelAddressing.makeOMMemory(
       desc = "mem", //lim._2.name.map(n => n).getOrElse(lim._1.name),

@@ -171,22 +171,17 @@ object DiplomaticObjectModelAddressing {
     }.flatten.toSeq
   }
 
-  def makeOMSRAM[T <: Data](
+  def makeOMSRAM(
     desc: String,
+    width: Int,
     depth: BigInt,
-    data: T,
+    granWidth: Int,
     uid: Int
   ): OMSRAM = {
-
-    val granWidth = data match {
-      case v: Vec[_] => v.head.getWidth
-      case d => d.getWidth
-    }
-
     OMSRAM(
       description = desc,
       addressWidth = log2Ceil(depth),
-      dataWidth = data.getWidth,
+      dataWidth = width,
       depth = depth,
       writeMaskGranularity = granWidth,
       uid = uid
